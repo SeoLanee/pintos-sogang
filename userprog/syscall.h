@@ -27,4 +27,7 @@ void seek (int fd UNUSED, unsigned position UNUSED);
 unsigned tell (int fd UNUSED);
 void close (int fd UNUSED);
 
+int fibonacci (int n);
+int max_of_four_int(int a, int b, int c, int d);
+
 #endif /* userprog/syscall.h */

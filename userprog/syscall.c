@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 
+#define FIBO_MAX 46
+#define MAX(a, b) (a > b ? a : b)
+
 static void syscall_handler (struct intr_frame *);
 static void check_addr(const void *);
 
@@ -99,6 +102,19 @@ syscall_handler (struct intr_frame *f)
     check_addr(f->esp+4);
     close(*(int *)(f->esp+4));
     break;                  
+
+    case SYS_FIBO:
+    check_addr(f->esp+4);
+    f->eax = fibonacci(*(int *)(f->esp+4));
+    break;
+
+    case SYS_MAX:
+    check_addr(f->esp+4);
+    check_addr(f->esp+8);
+    check_addr(f->esp+12);
+    check_addr(f->esp+16);
+    f->eax = max_of_four_int(*(int *)(f->esp+4), *(int *)(f->esp+8), *(int *)(f->esp+12), *(int *)(f->esp+16));
+    break;
 
     default: break;
   }
@@ -201,6 +217,24 @@ unsigned tell (int fd UNUSED)
 void close (int fd UNUSED)
 {
   return;
+}
+
+int fibonacci (int n)
+{
+  int i, fibo[FIBO_MAX+1] = {0, 1, };
+
+  if (n > FIBO_MAX) return -1;
+  
+  for(i = 2; i <= n; i++){
+    fibo[i] = fibo[i-1] + fibo[i-2];
+  }
+
+  return fibo[n];
+}
+
+int max_of_four_int(int a, int b, int c, int d)
+{
+  return MAX(MAX(a, b), MAX(c, d));
 }
 
 static void 
