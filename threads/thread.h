@@ -95,9 +95,10 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-// #ifdef USERPROG
+   #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    bool waiting;
     bool load_status;
     int exit_status;
 
@@ -108,7 +109,7 @@ struct thread
     struct semaphore load_sema;
     struct semaphore wait_sema;
     struct semaphore exit_sema;
-// #endif
+   #endif
 
 
     /* Owned by thread.c. */

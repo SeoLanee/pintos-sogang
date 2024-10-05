@@ -42,7 +42,7 @@ process_execute (const char *file_name)
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  
+
   fn_copy = palloc_get_page (0);
   
   if (fn_copy == NULL)
@@ -91,7 +91,7 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
- 
+
   t = thread_current();
   t->load_status = success;
   sema_up(&t->load_sema);
@@ -182,21 +182,13 @@ process_wait (tid_t child_tid)
 {
   int exit_status;
   struct thread *current = thread_current(), *t = NULL;
-  
-  // struct list_elem *e;
-  // for(e = list_begin(&current->child_list); e != list_end(&current->child_list); e = list_next(e)){
-  //   t = list_entry(e, struct thread, c_elem);
-  //   if(t->tid == child_tid) break;
-  // }
-
-  // if(e == list_end(&current->child_list))
-  //   return -1;
 
   t = get_child(current, child_tid);
 
   if(t == NULL)
     return -1;
 
+  t->waiting = true;
   sema_down(&t->wait_sema);
   list_remove (&t->c_elem);
   exit_status = t->exit_status;
