@@ -11,6 +11,8 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 
+#include "filesys/filesys.h"
+
 #include <stdio.h>
 #include <syscall-nr.h>
 
@@ -147,27 +149,30 @@ int wait (pid_t pid)
   return ret;
 }
 
-bool create (const char *file, unsigned initial_size UNUSED)
+bool create (const char *file, unsigned initial_size)
 {
-  check_addr(file);
-  return 0;
+  check_addr(*(char **)file);
+  char *file_name = *(char **)file;
+  return filesys_create(file_name, initial_size);
 }
 
 bool remove (const char *file)
 {
-  check_addr(file);
-  return 0;
+  check_addr(*(char **)file);
+  char *file_name = *(char **)file;
+  return filesys_remove(file_name);
 }
 
 int open (const char *file)
 {
-  check_addr(file);
-  return 0;
+  check_addr(*(char **)file);
+  char *file_name = *(char **)file;
+  return -2;
 }
 
 int filesize (int fd UNUSED)
 {
-  return 0;
+  return -2;
 }
 
 int read (int fd, void *buffer, unsigned length)
@@ -211,7 +216,7 @@ void seek (int fd UNUSED, unsigned position UNUSED)
 
 unsigned tell (int fd UNUSED)
 {
-  return 0;
+  return -2;
 }
 
 void close (int fd UNUSED)
