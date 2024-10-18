@@ -12,6 +12,7 @@
 #include "userprog/process.h"
 
 #include "filesys/filesys.h"
+#include "filesys/file.h"
 
 #include <stdio.h>
 #include <syscall-nr.h>
@@ -21,6 +22,7 @@
 
 static void syscall_handler (struct intr_frame *);
 static void check_addr(const void *);
+static int find_unusing_fd(bool using[]);
 
 void
 syscall_init (void) 
@@ -122,7 +124,6 @@ syscall_handler (struct intr_frame *f)
   }
 }
 
-
 void halt (void)
 {
   shutdown_power_off();
@@ -167,60 +168,87 @@ int open (const char *file)
 {
   check_addr(*(char **)file);
   char *file_name = *(char **)file;
-  return -2;
+  struct file *_file = filesys_open(file_name);
+  struct thread *t = thread_current();
+  int idx = find_unusing_fd(t->fd_using);
+
+  if(idx == -1 || _file == NULL) return -1;
+
+  t->fd[idx] = _file;
+  t->fd_using[idx] = true;
+
+  return idx;
 }
 
-int filesize (int fd UNUSED)
+int filesize (int fd)
 {
-  return -2;
+  struct file *file = thread_current()->fd[fd];
+
+  return file ? file_length(file) : -1;
 }
 
 int read (int fd, void *buffer, unsigned length)
 {
   check_addr(*(char **)buffer);
-
-  char *bp = *(char **)buffer;
+  char *buf = *(char **)buffer;
   int read_cnt = 0;
 
   if(fd == STDIN_FILENO){
     while(length--){
-      *bp = (char)input_getc();
+      *buf = (char)input_getc();
       read_cnt++;
-      bp += 1;
+      buf += 1;
     }
-
-    return read_cnt;
+  }
+  else{
+    struct file *file = thread_current()->fd[fd];
+    
+    if(!file) return -1;
+    
+    read_cnt = file_read(file, buf, length);
   }
 
-  return -1;
+  return read_cnt;
 }
 
 int write (int fd, const void *buffer, unsigned length)
 {
   check_addr(*(char **)buffer);
 
-  char *file_buffer = *(char **)buffer;
+  char *buf = *(char **)buffer;
 
   if(fd == STDOUT_FILENO){
-    putbuf(file_buffer, length);
+    putbuf(buf, length);
     return length;
   }
-
-  return -1;
+  else{
+    struct file *file = thread_current()->fd[fd];
+    return file ? file_write(file, buf, length) : -1;
+  }
 }
 
-void seek (int fd UNUSED, unsigned position UNUSED)
+void seek (int fd, unsigned position)
 {
+  struct file *file = thread_current()->fd[fd];
+  if(file) file_seek(file, position);
   return;
 }
 
-unsigned tell (int fd UNUSED)
+unsigned tell (int fd)
 {
-  return -2;
+  struct file *file = thread_current()->fd[fd];
+  return file ? file_tell(file) : -1;
 }
 
-void close (int fd UNUSED)
+void close (int fd)
 {
+  struct thread *t = thread_current();
+  struct file *file = t->fd[fd];
+
+  if(file) file_close(t->fd[fd]);
+  t->fd[fd] = NULL;
+  t->fd_using[fd] = false;
+
   return;
 }
 
@@ -249,4 +277,13 @@ check_addr(const void *vaddr){
   {
     exit(-1);
   }
+}
+
+static int
+find_unusing_fd(bool using[]){
+  for(int i = 0; i < FD_MAX; i++){
+    if(!using[i]) return i;
+  }
+  
+  return -1;
 }

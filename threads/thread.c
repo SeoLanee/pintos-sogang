@@ -478,13 +478,17 @@ init_thread (struct thread *t, const char *name, int priority)
 
   list_push_back (&all_list, &t->allelem);
   
-  //mark
   #ifdef USERPROG
   t->waiting = false;
   list_init(&t->child_list);
   sema_init(&t->load_sema, 0);
   sema_init(&t->wait_sema, 0);
   sema_init(&t->exit_sema, 0);
+
+  memset(t->fd, 0, sizeof(struct file *) * FD_MAX);
+  memset(t->fd_using, 0, sizeof(bool) * FD_MAX);
+  t->fd_using[STDIN_FILENO] = true;
+  t->fd_using[STDOUT_FILENO] = true;
   #endif
 
   intr_set_level (old_level);
