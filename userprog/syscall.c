@@ -20,13 +20,17 @@
 #define FIBO_MAX 46
 #define MAX(a, b) (a > b ? a : b)
 
+
 static void syscall_handler (struct intr_frame *);
 static void check_addr(const void *);
 static int find_unusing_fd(bool using[]);
 
+struct lock filesys_lock;
+
 void
 syscall_init (void) 
 {
+  lock_init(&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -146,45 +150,63 @@ pid_t exec (const char *file)
 
 int wait (pid_t pid)
 {
-  pid_t ret = process_wait(pid);
-  return ret;
+  return process_wait(pid);
 }
 
 bool create (const char *file, unsigned initial_size)
 {
   check_addr(*(char **)file);
   char *file_name = *(char **)file;
-  return filesys_create(file_name, initial_size);
+  
+  lock_acquire(&filesys_lock);
+  bool success = filesys_create(file_name, initial_size);
+  lock_release(&filesys_lock);
+
+  return success;
 }
 
 bool remove (const char *file)
 {
   check_addr(*(char **)file);
   char *file_name = *(char **)file;
-  return filesys_remove(file_name);
+  
+  lock_acquire(&filesys_lock);
+  bool success = filesys_remove(file_name);
+  lock_release(&filesys_lock);
+  
+  return success;
 }
 
 int open (const char *file)
 {
   check_addr(*(char **)file);
   char *file_name = *(char **)file;
-  struct file *_file = filesys_open(file_name);
   struct thread *t = thread_current();
+  bool success = false;
+
+  lock_acquire(&filesys_lock);
+  struct file *_file = filesys_open(file_name);
   int idx = find_unusing_fd(t->fd_using);
-
-  if(idx == -1 || _file == NULL) return -1;
-
-  t->fd[idx] = _file;
-  t->fd_using[idx] = true;
-
-  return idx;
+  if(idx != -1 && _file != NULL) {
+    t->fd[idx] = _file;
+    t->fd_using[idx] = true;
+    success = true;
+  }
+  lock_release(&filesys_lock);
+  
+  return success ? idx : -1;
 }
 
 int filesize (int fd)
 {
+  int ret;
   struct file *file = thread_current()->fd[fd];
 
-  return file ? file_length(file) : -1;
+  lock_acquire(&filesys_lock);
+  ret = file ? file_length(file) : -1;
+  lock_release(&filesys_lock);
+
+  return ret;
 }
 
 int read (int fd, void *buffer, unsigned length)
@@ -205,7 +227,9 @@ int read (int fd, void *buffer, unsigned length)
     
     if(!file) return -1;
     
+    lock_acquire(&filesys_lock);
     read_cnt = file_read(file, buf, length);
+    lock_release(&filesys_lock);
   }
 
   return read_cnt;
@@ -222,22 +246,42 @@ int write (int fd, const void *buffer, unsigned length)
     return length;
   }
   else{
+    int ret = -1;
     struct file *file = thread_current()->fd[fd];
-    return file ? file_write(file, buf, length) : -1;
+
+    if(!file) return -1;
+
+    lock_acquire(&filesys_lock);
+    ret = file_write(file, buf, length);
+    lock_release(&filesys_lock);
+    
+    return ret;
   }
 }
 
 void seek (int fd, unsigned position)
 {
   struct file *file = thread_current()->fd[fd];
-  if(file) file_seek(file, position);
+  
+  if(file) {
+    lock_acquire(&filesys_lock);
+    file_seek(file, position);
+    lock_release(&filesys_lock);
+  }
   return;
 }
 
 unsigned tell (int fd)
 {
+  unsigned ret = -1;
   struct file *file = thread_current()->fd[fd];
-  return file ? file_tell(file) : -1;
+  
+  if(file) {
+    lock_acquire(&filesys_lock);
+    ret = file_tell(file);
+    lock_release(&filesys_lock);
+  }
+  return ret;
 }
 
 void close (int fd)
@@ -245,9 +289,13 @@ void close (int fd)
   struct thread *t = thread_current();
   struct file *file = t->fd[fd];
 
-  if(file) file_close(t->fd[fd]);
-  t->fd[fd] = NULL;
-  t->fd_using[fd] = false;
+  if(file) {
+    lock_acquire(&filesys_lock);
+    file_close(t->fd[fd]);
+    t->fd[fd] = NULL;
+    t->fd_using[fd] = false;
+    lock_release(&filesys_lock);
+  }
 
   return;
 }
