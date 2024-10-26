@@ -114,6 +114,8 @@ struct thread
 
     struct file *fd[FD_MAX];
     bool fd_using[FD_MAX];
+
+    struct file *exec_file;
    #endif
 
 

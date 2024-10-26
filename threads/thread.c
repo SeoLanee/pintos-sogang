@@ -489,6 +489,7 @@ init_thread (struct thread *t, const char *name, int priority)
   memset(t->fd_using, 0, sizeof(bool) * FD_MAX);
   t->fd_using[STDIN_FILENO] = true;
   t->fd_using[STDOUT_FILENO] = true;
+  t->exec_file = NULL;
   #endif
 
   intr_set_level (old_level);

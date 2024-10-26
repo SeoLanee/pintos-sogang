@@ -51,7 +51,7 @@ process_execute (const char *file_name)
   strlcpy (fn_parsed, file_name, 128);
 
   strtok_r(fn_parsed, " ", &save);
-  
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (fn_parsed, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -206,6 +206,7 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  file_close(cur->exec_file);
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -334,6 +335,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+  file_deny_write(file);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -418,7 +420,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  if(!success) file_close (file);
+  else thread_current()->exec_file = file;
   return success;
 }
 

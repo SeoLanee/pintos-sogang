@@ -254,7 +254,7 @@ int write (int fd, const void *buffer, unsigned length)
     lock_acquire(&filesys_lock);
     ret = file_write(file, buf, length);
     lock_release(&filesys_lock);
-    
+
     return ret;
   }
 }
