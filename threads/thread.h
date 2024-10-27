@@ -113,6 +113,7 @@ struct thread
     struct semaphore exit_sema;
 
     struct file *fdt[FD_MAX];
+    bool fd_using[FD_MAX];
 
     struct file *exec_file;
    #endif

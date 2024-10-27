@@ -484,6 +484,10 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init(&t->exit_sema, 0);
 
   memset(t->fdt, 0, sizeof(struct file *) * FD_MAX);
+  memset(t->fd_using, 0, sizeof(bool) * FD_MAX);
+  t->fd_using[STDIN_FILENO] = true;
+  t->fd_using[STDOUT_FILENO] = true;
+
   t->exec_file = NULL;
   #endif
 

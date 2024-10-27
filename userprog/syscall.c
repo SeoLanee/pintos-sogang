@@ -23,7 +23,7 @@
 
 static void syscall_handler (struct intr_frame *);
 static void check_addr(const void *);
-static int find_unusing_fd(struct file *fdt[]);
+static int find_unusing_fd(bool using[]);
 
 struct lock filesys_lock;
 
@@ -186,9 +186,10 @@ int open (const char *file)
 
   lock_acquire(&filesys_lock);
   struct file *_file = filesys_open(file_name);
-  int idx = find_unusing_fd(t->fdt);
+  int idx = find_unusing_fd(t->fd_using);
   if(idx != -1 && _file != NULL) {
     t->fdt[idx] = _file;
+    t->fd_using[idx] = true;
     success = true;
   }
   lock_release(&filesys_lock);
@@ -292,6 +293,7 @@ void close (int fd)
     lock_acquire(&filesys_lock);
     file_close(t->fdt[fd]);
     t->fdt[fd] = NULL;
+    t->fd_using[fd] = false;
     lock_release(&filesys_lock);
   }
 
@@ -326,9 +328,9 @@ check_addr(const void *vaddr){
 }
 
 static int
-find_unusing_fd(struct file *fdt[]){
-  for(int i = 2; i < FD_MAX; i++){
-    if(!fdt[i]) return i;
+find_unusing_fd(bool using[]){
+  for(int i = 0; i < FD_MAX; i++){
+    if(!using[i]) return i;
   }
   
   return -1;
