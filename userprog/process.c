@@ -59,7 +59,8 @@ process_execute (const char *file_name)
 
   struct thread *child = get_child(thread_current(), tid);
   sema_down(&child->load_sema);
-  
+
+
   return child->load_status ? tid : -1;
 }
 
@@ -188,7 +189,6 @@ process_wait (tid_t child_tid)
   if(t == NULL)
     return -1;
 
-  t->waiting = true;
   sema_down(&t->wait_sema);
   list_remove (&t->c_elem);
   exit_status = t->exit_status;
@@ -206,7 +206,11 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  for(int i = 0; i < FD_MAX;i++){
+    file_close(cur->fdt[i]);
+  }
   file_close(cur->exec_file);
+
   pd = cur->pagedir;
   if (pd != NULL) 
     {

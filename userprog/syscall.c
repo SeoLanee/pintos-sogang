@@ -23,7 +23,7 @@
 
 static void syscall_handler (struct intr_frame *);
 static void check_addr(const void *);
-static int find_unusing_fd(bool using[]);
+static int find_unusing_fd(struct file *fdt[]);
 
 struct lock filesys_lock;
 
@@ -186,10 +186,9 @@ int open (const char *file)
 
   lock_acquire(&filesys_lock);
   struct file *_file = filesys_open(file_name);
-  int idx = find_unusing_fd(t->fd_using);
+  int idx = find_unusing_fd(t->fdt);
   if(idx != -1 && _file != NULL) {
-    t->fd[idx] = _file;
-    t->fd_using[idx] = true;
+    t->fdt[idx] = _file;
     success = true;
   }
   lock_release(&filesys_lock);
@@ -200,7 +199,7 @@ int open (const char *file)
 int filesize (int fd)
 {
   int ret;
-  struct file *file = thread_current()->fd[fd];
+  struct file *file = thread_current()->fdt[fd];
 
   lock_acquire(&filesys_lock);
   ret = file ? file_length(file) : -1;
@@ -223,7 +222,7 @@ int read (int fd, void *buffer, unsigned length)
     }
   }
   else{
-    struct file *file = thread_current()->fd[fd];
+    struct file *file = thread_current()->fdt[fd];
     
     if(!file) return -1;
     
@@ -247,7 +246,7 @@ int write (int fd, const void *buffer, unsigned length)
   }
   else{
     int ret = -1;
-    struct file *file = thread_current()->fd[fd];
+    struct file *file = thread_current()->fdt[fd];
 
     if(!file) return -1;
 
@@ -261,7 +260,7 @@ int write (int fd, const void *buffer, unsigned length)
 
 void seek (int fd, unsigned position)
 {
-  struct file *file = thread_current()->fd[fd];
+  struct file *file = thread_current()->fdt[fd];
   
   if(file) {
     lock_acquire(&filesys_lock);
@@ -274,7 +273,7 @@ void seek (int fd, unsigned position)
 unsigned tell (int fd)
 {
   unsigned ret = -1;
-  struct file *file = thread_current()->fd[fd];
+  struct file *file = thread_current()->fdt[fd];
   
   if(file) {
     lock_acquire(&filesys_lock);
@@ -287,13 +286,12 @@ unsigned tell (int fd)
 void close (int fd)
 {
   struct thread *t = thread_current();
-  struct file *file = t->fd[fd];
+  struct file *file = t->fdt[fd];
 
   if(file) {
     lock_acquire(&filesys_lock);
-    file_close(t->fd[fd]);
-    t->fd[fd] = NULL;
-    t->fd_using[fd] = false;
+    file_close(t->fdt[fd]);
+    t->fdt[fd] = NULL;
     lock_release(&filesys_lock);
   }
 
@@ -328,9 +326,9 @@ check_addr(const void *vaddr){
 }
 
 static int
-find_unusing_fd(bool using[]){
-  for(int i = 0; i < FD_MAX; i++){
-    if(!using[i]) return i;
+find_unusing_fd(struct file *fdt[]){
+  for(int i = 2; i < FD_MAX; i++){
+    if(!fdt[i]) return i;
   }
   
   return -1;

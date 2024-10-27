@@ -100,20 +100,19 @@ struct thread
    #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    bool waiting;
-    bool load_status;
-    int exit_status;
 
     struct thread* parent;
     struct list child_list;
     struct list_elem c_elem;
 
+    bool load_status;
+    int exit_status;
+
     struct semaphore load_sema;
     struct semaphore wait_sema;
     struct semaphore exit_sema;
 
-    struct file *fd[FD_MAX];
-    bool fd_using[FD_MAX];
+    struct file *fdt[FD_MAX];
 
     struct file *exec_file;
    #endif

@@ -198,7 +198,6 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
-  //mark
   #ifdef USERPROG
   t->parent = thread_current();
   list_push_back(&thread_current()->child_list, &t->c_elem);
@@ -291,7 +290,7 @@ thread_exit (void)
 #ifdef USERPROG
   process_exit ();
   sema_up(&thread_current()->wait_sema);
-  if(thread_current()->waiting){
+  if(thread_current()->parent){
     sema_down(&thread_current()->exit_sema);
   }
 #endif
@@ -479,16 +478,12 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   
   #ifdef USERPROG
-  t->waiting = false;
   list_init(&t->child_list);
   sema_init(&t->load_sema, 0);
   sema_init(&t->wait_sema, 0);
   sema_init(&t->exit_sema, 0);
 
-  memset(t->fd, 0, sizeof(struct file *) * FD_MAX);
-  memset(t->fd_using, 0, sizeof(bool) * FD_MAX);
-  t->fd_using[STDIN_FILENO] = true;
-  t->fd_using[STDOUT_FILENO] = true;
+  memset(t->fdt, 0, sizeof(struct file *) * FD_MAX);
   t->exec_file = NULL;
   #endif
 
@@ -564,8 +559,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      // mark
-      // palloc_free_page (prev);
+      palloc_free_page (prev);
     }
 }
 
