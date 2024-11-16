@@ -23,6 +23,7 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+static struct list sleep_list;
 
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -71,6 +72,9 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+static bool list_less_alarm 
+(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -91,6 +95,7 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
+  list_init (&sleep_list);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -607,3 +612,48 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+
+
+/* 
+	Alarm Clock 
+ */
+void 
+thread_sleep(int64_t ticks)
+{
+	enum intr_level old_level;
+	struct thread *cur = thread_current ();
+
+	if(cur != idle_thread){
+		cur->alarm_time = ticks;
+		
+		old_level = intr_disable();
+		
+		list_insert_ordered(&sleep_list, &cur->elem, list_less_alarm, NULL);
+		thread_block();
+		
+		intr_set_level(old_level);
+	}
+}
+
+void 
+thread_wakeup (void)
+{
+	ASSERT(!list_empty(&sleep_list));
+
+	struct thread *t = list_entry(list_pop_front(&sleep_list), struct thread, elem);
+	thread_unblock(t);
+}
+
+
+bool 
+thread_check_sleep_list (int64_t ticks)
+{
+	return (!list_empty(&sleep_list)) && (ticks >= list_entry(list_front(&sleep_list), struct thread, elem)->alarm_time);
+}
+
+
+static bool list_less_alarm
+(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+	return list_entry(a, struct thread, elem)->alarm_time < list_entry(b, struct thread, elem)->alarm_time;
+}
