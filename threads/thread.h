@@ -7,6 +7,8 @@
 
 #include "threads/synch.h"
 
+extern bool thread_priority_aging;
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -166,6 +168,6 @@ void thread_sleep(int64_t ticks);
 void thread_wakeup(void);
 bool thread_check_sleep_list(int64_t ticks);
 
-
+void thread_aging (void);
 
 #endif /* threads/thread.h */

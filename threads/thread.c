@@ -59,6 +59,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
+bool thread_priority_aging;
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -656,4 +657,11 @@ thread_check_sleep_list (int64_t ticks)
 static bool list_less_alarm
 (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
 	return list_entry(a, struct thread, elem)->alarm_time < list_entry(b, struct thread, elem)->alarm_time;
+}
+
+
+void 
+thread_aging ()
+{
+  return;
 }
