@@ -178,7 +178,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
 	while(thread_check_sleep_list(ticks))
 		thread_wakeup();
-
+  
   if (thread_priority_aging)
     thread_aging();
 }

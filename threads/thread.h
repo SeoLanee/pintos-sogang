@@ -169,5 +169,8 @@ void thread_wakeup(void);
 bool thread_check_sleep_list(int64_t ticks);
 
 void thread_aging (void);
+void thread_check_preemption(void);
+bool list_greater_priority
+(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 #endif /* threads/thread.h */

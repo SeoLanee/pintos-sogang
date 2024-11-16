@@ -176,7 +176,9 @@ thread_create (const char *name, int priority,
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
-  tid_t tid;
+  tid_t tid; 
+  enum intr_level old_level;
+ 
 
   ASSERT (function != NULL);
 
@@ -188,6 +190,8 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+
+  old_level = intr_disable ();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -209,8 +213,10 @@ thread_create (const char *name, int priority,
   list_push_back(&thread_current()->child_list, &t->c_elem);
   #endif
 
-  /* Add to run queue. */
+  intr_set_level (old_level);
+
   thread_unblock (t);
+  thread_check_preemption();
 
   return tid;
 }
@@ -248,7 +254,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list, &t->elem, list_greater_priority, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -323,7 +329,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem, list_greater_priority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -351,6 +357,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+	thread_check_preemption();
 }
 
 /* Returns the current thread's priority. */
@@ -480,7 +487,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
-
   list_push_back (&all_list, &t->allelem);
   
   #ifdef USERPROG
@@ -496,7 +502,6 @@ init_thread (struct thread *t, const char *name, int priority)
 
   t->exec_file = NULL;
   #endif
-
   intr_set_level (old_level);
 }
 
@@ -646,19 +651,31 @@ thread_wakeup (void)
 	thread_unblock(t);
 }
 
-
 bool 
 thread_check_sleep_list (int64_t ticks)
 {
 	return (!list_empty(&sleep_list)) && (ticks >= list_entry(list_front(&sleep_list), struct thread, elem)->alarm_time);
 }
 
-
 static bool list_less_alarm
 (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
 	return list_entry(a, struct thread, elem)->alarm_time < list_entry(b, struct thread, elem)->alarm_time;
 }
 
+
+void 
+thread_check_preemption()
+{
+	if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
+  	thread_yield();
+  }
+}
+
+bool list_greater_priority
+(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+	return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
+}
 
 void 
 thread_aging ()
