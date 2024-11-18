@@ -76,6 +76,8 @@ static tid_t allocate_tid (void);
 static bool list_less_alarm 
 (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
+static void priority_aging (struct thread *t, void *aux UNUSED);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -680,5 +682,13 @@ bool list_greater_priority
 void 
 thread_aging ()
 {
-  return;
+  thread_foreach(priority_aging, NULL);
+}
+
+static void 
+priority_aging (struct thread *t, void *aux UNUSED)
+{
+  if (t == idle_thread || t == thread_current()) return;
+
+  t->priority = (t->priority + 1) <= PRI_MAX ? t->priority + 1 : PRI_MAX; 
 }
