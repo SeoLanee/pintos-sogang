@@ -99,8 +99,10 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-    // Alarm-Clock
-  	int64_t alarm_time;
+    int64_t alarm_time;
+
+	 int nice;
+	 int recent_cpu;
 
    #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -172,5 +174,10 @@ void thread_aging (void);
 void thread_check_preemption(void);
 bool list_greater_priority
 (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
+void mlfqs_calc_load_avg(void);
+void mlfqs_inc_recent_cpu(void);
+void mlfqs_recalc_priority(void);
+void mlfqs_recalc_recent_cpu(void);
 
 #endif /* threads/thread.h */
