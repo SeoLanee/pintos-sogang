@@ -367,6 +367,7 @@ thread_set_priority (int new_priority)
   if(thread_mlfqs) return;
 
   thread_current ()->priority = new_priority;
+  list_sort(&ready_list, list_greater_priority, NULL);
 	thread_check_preemption();
 }
 
@@ -387,6 +388,7 @@ thread_set_nice (int nice)
 
 	thread_current()->nice = nice;
 	mlfqs_calc_priority(thread_current(), NULL);
+  list_sort(&ready_list, list_greater_priority, NULL);
 	thread_check_preemption();
 
 	intr_set_level(old_level);
@@ -707,7 +709,10 @@ static bool list_less_alarm
 void 
 thread_check_preemption()
 {
-	if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
+  if(list_empty(&ready_list) || intr_context())
+    return;
+
+	if(thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
   	thread_yield();
   }
 }
@@ -721,7 +726,9 @@ bool list_greater_priority
 void 
 thread_aging ()
 {
+  enum intr_level old_level = intr_disable();
   thread_foreach(priority_aging, NULL);
+  intr_set_level(old_level);
 }
 
 static void 
@@ -788,12 +795,16 @@ mlfqs_inc_recent_cpu(void)
 void 
 mlfqs_recalc_priority(void)
 {
+  enum intr_level old_level = intr_disable();
 	thread_foreach(mlfqs_calc_priority, NULL);
+  intr_set_level(old_level);
 }
 
 void
 mlfqs_recalc_recent_cpu(void)
 {
+  enum intr_level old_level = intr_disable();
 	thread_foreach(mlfqs_calc_recent_cpu, NULL);
+  intr_set_level(old_level);
 }
 
