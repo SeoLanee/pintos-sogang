@@ -1,5 +1,4 @@
 #include <hash.h>
-#include <filesys/file.h>
 
 enum page_status
   {
@@ -10,7 +9,9 @@ enum page_status
 
 struct vm_entry
 {
-    struct hash_elem elem;
+    struct hash_elem hash_elem;
+
+    void *vaddr;
 };
 
 void vm_init(struct hash *);
