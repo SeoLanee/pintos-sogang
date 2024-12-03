@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 
 #include "devices/timer.h"
+#include "vm/page.h"
 
 #define CMDMAX 128
 #define WSIZE 4
@@ -85,6 +86,9 @@ start_process (void *file_name_)
     palloc_free_page (file_name);
     thread_exit ();
   }
+
+  /* Initializing the set of vm_entries, e.g. hash table */
+  vm_init(&thread_current()->vm);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -204,13 +208,15 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  /* Destroy the current process's page directory and switch back
-     to the kernel-only page directory. */
   for(int i = 0; i < FD_MAX;i++){
     file_close(cur->fdt[i]);
   }
   file_close(cur->exec_file);
 
+  vm_destroy(&cur->vm);
+
+  /* Destroy the current process's page directory and switch back
+     to the kernel-only page directory. */
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -499,7 +505,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
-
+      
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {

@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
+#include <hash.h>
 #include <stdint.h>
 
 #include "threads/synch.h"
@@ -104,7 +105,7 @@ struct thread
 	 int nice;
 	 int recent_cpu;
 
-   #ifdef USERPROG
+   // #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 
@@ -123,8 +124,12 @@ struct thread
     bool fd_using[FD_MAX];
 
     struct file *exec_file;
-   #endif
+      
+    struct hash vm;
+   // #endif
 
+   
+   
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
