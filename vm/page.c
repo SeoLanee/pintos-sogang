@@ -2,10 +2,12 @@
 #include "threads/thread.h"
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 #include <debug.h>
 #include <stdio.h>
 #include <string.h>
+
 
 
 static unsigned vm_hash_func (const struct hash_elem *e, void *aux UNUSED);
@@ -99,9 +101,17 @@ bool load_file(void *kaddr, struct vm_entry *vme)
     size_t page_read_bytes = vme->read_bytes;
     size_t page_zero_bytes = vme->zero_bytes;
 
-    if (file_read_at (file, kaddr, page_read_bytes, ofs) != (int) page_read_bytes)
-        return false;
+    if(!lock_held_by_current_thread(&filesys_lock))
+        lock_acquire(&filesys_lock);
+    
+    off_t read_bytes = file_read_at (file, kaddr, page_read_bytes, ofs);
 
+    if(!lock_keep_hold) 
+        lock_release(&filesys_lock);
+
+    if (read_bytes != (int) page_read_bytes)
+        return false;
+    
     memset (kaddr + page_read_bytes, 0, page_zero_bytes);
     return true;
 }

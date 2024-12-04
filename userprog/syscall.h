@@ -4,12 +4,16 @@
 #include <stdbool.h>
 #include <debug.h>
 
+#include "threads/synch.h"
+
 typedef int pid_t;
 #define PID_ERROR ((pid_t) -1)
 
 #define EXIT_SUCCESS 0          
 #define EXIT_FAILURE 1          
 
+struct lock filesys_lock;
+bool lock_keep_hold;
 
 void syscall_init (void);
 

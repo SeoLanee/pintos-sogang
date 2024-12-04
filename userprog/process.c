@@ -8,6 +8,7 @@
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
+#include "userprog/syscall.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -207,10 +208,12 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  for(int i = 0; i < FD_MAX;i++){
+  lock_acquire(&filesys_lock);
+    for(int i = 0; i < FD_MAX;i++){
     file_close(cur->fdt[i]);
   }
   file_close(cur->exec_file);
+  lock_release(&filesys_lock);
 
   vm_destroy(&cur->vm);
 
@@ -338,16 +341,22 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
+  lock_acquire(&filesys_lock);
   file = filesys_open (file_name);
+  lock_release(&filesys_lock);
+
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+  lock_acquire(&filesys_lock);
   file_deny_write(file);
+  lock_release(&filesys_lock);
 
   /* Read and verify executable header. */
-  if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
+  lock_acquire(&filesys_lock);
+    if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
       || ehdr.e_type != 2
       || ehdr.e_machine != 3
@@ -358,6 +367,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: error loading executable\n", file_name);
       goto done; 
     }
+  lock_release(&filesys_lock);
 
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
@@ -367,10 +377,14 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
       if (file_ofs < 0 || file_ofs > file_length (file))
         goto done;
-      file_seek (file, file_ofs);
 
-      if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
+      lock_acquire(&filesys_lock);
+        file_seek (file, file_ofs);
+      if (file_read (file, &phdr, sizeof phdr) != sizeof phdr){
         goto done;
+      }
+      lock_release(&filesys_lock);
+      
       file_ofs += sizeof phdr;
       switch (phdr.p_type) 
         {
@@ -429,7 +443,14 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  if(!success) file_close (file);
+  if(lock_held_by_current_thread(&filesys_lock))
+    lock_release(&filesys_lock);
+
+  if(!success) {
+    lock_acquire(&filesys_lock);
+    file_close (file);
+    lock_release(&filesys_lock);
+  }
   else thread_current()->exec_file = file;
   return success;
 }

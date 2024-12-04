@@ -31,6 +31,7 @@ void
 syscall_init (void) 
 {
   lock_init(&filesys_lock);
+  lock_keep_hold = false;
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -184,7 +185,7 @@ int open (const char *file)
   struct thread *t = thread_current();
   bool success = false;
 
-  lock_acquire(&filesys_lock);
+  lock_acquire(&filesys_lock);  
   struct file *_file = filesys_open(file_name);
   int idx = find_unusing_fd(t->fd_using);
   if(idx != -1 && _file != NULL) {
@@ -228,7 +229,9 @@ int read (int fd, void *buffer, unsigned length)
     if(!file) return -1;
     
     lock_acquire(&filesys_lock);
+    lock_keep_hold = true;
     read_cnt = file_read(file, buf, length);
+    lock_keep_hold = false;
     lock_release(&filesys_lock);
   }
 
@@ -252,7 +255,9 @@ int write (int fd, const void *buffer, unsigned length)
     if(!file) return -1;
 
     lock_acquire(&filesys_lock);
+    lock_keep_hold = true;
     ret = file_write(file, buf, length);
+    lock_keep_hold = false;
     lock_release(&filesys_lock);
 
     return ret;
@@ -320,10 +325,8 @@ int max_of_four_int(int a, int b, int c, int d)
 
 static void 
 check_addr(const void *vaddr){
-  if(vaddr == NULL || is_kernel_vaddr(vaddr)) 
-    exit(-1);
-
-
+  if(vaddr == NULL) exit(-1);
+  if(is_kernel_vaddr(vaddr)) exit(-1);
   if(pagedir_get_page(thread_current()->pagedir, vaddr) == NULL) 
   {
     if(vm_find_vme((void *)vaddr)){
