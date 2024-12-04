@@ -242,7 +242,7 @@ int write (int fd, const void *buffer, unsigned length)
   char *buf = *(char **)buffer;
 
   if(fd == STDOUT_FILENO){
-    putbuf(buf, length);
+    putbuf(buf, length); 
     return length;
   }
   else{
@@ -320,9 +320,15 @@ int max_of_four_int(int a, int b, int c, int d)
 
 static void 
 check_addr(const void *vaddr){
-  if(vaddr == NULL || is_kernel_vaddr(vaddr) || 
-    pagedir_get_page(thread_current()->pagedir, vaddr) == NULL) 
+  if(vaddr == NULL || is_kernel_vaddr(vaddr)) 
+    exit(-1);
+
+
+  if(pagedir_get_page(thread_current()->pagedir, vaddr) == NULL) 
   {
+    if(vm_find_vme((void *)vaddr)){
+      return;
+    }
     exit(-1);
   }
 }

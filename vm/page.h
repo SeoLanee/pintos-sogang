@@ -1,6 +1,8 @@
 #include <hash.h>
 
-enum page_status
+#include "filesys/file.h"
+
+enum page_type
   {
     PAGE_ELF,
     PAGE_FILE,
@@ -10,13 +12,24 @@ enum page_status
 struct vm_entry
 {
     struct hash_elem hash_elem;
+    enum page_type type;
 
     void *vaddr;
+    struct file *file;
+    off_t ofs;
+    size_t read_bytes;
+    size_t zero_bytes;
+    bool writable;
+
 };
 
 void vm_init(struct hash *);
 void vm_destroy(struct hash *);
 
-struct vm_entry *find_vme(void *);
-bool insert_vme(struct hash *, struct vm_entry *);
-bool delete_vme(struct hash *, struct vm_entry *);
+struct vm_entry *vm_create_vme(void);
+
+struct vm_entry *vm_find_vme(void *);
+bool vm_insert_vme(struct hash *, struct vm_entry *);
+bool vm_delete_vme(struct hash *, struct vm_entry *);
+
+bool load_file(void *, struct vm_entry *);
