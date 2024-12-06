@@ -20,6 +20,7 @@
 #include "threads/vaddr.h"
 
 #include "devices/timer.h"
+#include "vm/frame.h"
 
 #define CMDMAX 128
 #define WSIZE 4
@@ -564,14 +565,14 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  kpage = frame_alloc (PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
         *esp = PHYS_BASE;
       else
-        palloc_free_page (kpage);
+        frame_free (kpage);
     }
 
   struct vm_entry *vme = vm_create_vme();
@@ -614,19 +615,19 @@ bool handle_mm_fault (struct vm_entry *vme)
   void *upage = vme->vaddr;
   uint8_t *kpage;
   
-  kpage = palloc_get_page (PAL_USER);
+  kpage = frame_alloc(0);
   if (kpage == NULL)
     return false;
       
   switch(vme->type){
     case PAGE_ELF:
       if (!load_file(kpage, vme)) {
-        palloc_free_page(kpage);
+        frame_free(kpage);
         break;
       }
 
       if (!install_page (upage, kpage, true)) {
-        palloc_free_page(kpage);
+        frame_free(kpage);
         break;
       }
 
