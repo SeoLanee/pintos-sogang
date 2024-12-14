@@ -40,6 +40,7 @@
 #include "filesys/fsutil.h"
 #endif
 
+
 /* Page directory with kernel mappings only. */
 uint32_t *init_page_dir;
 
@@ -101,7 +102,9 @@ main (void)
   malloc_init ();
   paging_init ();
 
+#ifdef USERPROG
   frame_init ();
+#endif
 
   /* Segmentation. */
 #ifdef USERPROG
@@ -131,7 +134,10 @@ main (void)
   filesys_init (format_filesys);
 #endif
 
+#ifdef USERPROG
   swap_init();
+#endif
+
 
   printf ("Boot complete.\n");
   

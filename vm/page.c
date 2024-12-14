@@ -34,12 +34,12 @@ struct vm_entry *vm_create_vme()
     return vme;
 }
 
-struct vm_entry *vm_find_vme(void *vaddr)
+struct vm_entry *vm_find_vme(void *uaddr)
 {
     struct hash_elem *e;
     struct vm_entry vme;
 
-    vme.vaddr = pg_round_down(vaddr);
+    vme.uaddr = pg_round_down(uaddr);
 
     e = hash_find(&thread_current()->vm, &vme.hash_elem);
     
@@ -77,14 +77,14 @@ hash_vaddr (void *vaddr)
 
 static unsigned vm_hash_func(const struct hash_elem *e, void *aux UNUSED)
 {
-    return hash_vaddr(hash_entry(e, struct vm_entry, hash_elem)->vaddr);
+    return hash_vaddr(hash_entry(e, struct vm_entry, hash_elem)->uaddr);
 }
 
 static bool vm_less_func(const struct hash_elem *a, 
                         const struct hash_elem *b, void *aux UNUSED)
 {
-    return hash_entry(a, struct vm_entry, hash_elem)->vaddr 
-            < hash_entry(b, struct vm_entry, hash_elem)->vaddr;
+    return hash_entry(a, struct vm_entry, hash_elem)->uaddr 
+            < hash_entry(b, struct vm_entry, hash_elem)->uaddr;
 }
 
 static void vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
