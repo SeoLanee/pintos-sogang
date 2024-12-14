@@ -4,6 +4,7 @@
 #include <hash.h>
 
 #include "filesys/file.h"
+#include "devices/block.h"
 
 enum page_type
   {
@@ -16,13 +17,17 @@ struct vm_entry
 {
     struct hash_elem hash_elem;
     enum page_type type;
-
     void *uaddr;
+    bool writable;
+
+    // BIN
     struct file *file;
     off_t ofs;
     size_t read_bytes;
     size_t zero_bytes;
-    bool writable;
+
+    // SWAP
+    block_sector_t swap_idx;
 };
 
 void vm_init(struct hash *);

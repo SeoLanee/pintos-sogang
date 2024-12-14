@@ -19,8 +19,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-#include "devices/timer.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 
 #define CMDMAX 128
 #define WSIZE 4
@@ -535,6 +535,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
          and zero the final PAGE_ZERO_BYTES bytes. */
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
+      
 
       struct vm_entry *vme = vm_create_vme();
 
@@ -565,7 +566,18 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
-  kpage = frame_alloc (PAL_ZERO);
+
+  struct vm_entry *vme = vm_create_vme();
+  vme->uaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  vme->file = NULL;
+  vme->ofs = 0;
+  vme->read_bytes = 0;     
+  vme->zero_bytes = 0;
+  vme->writable = true;
+  vm_insert_vme(&thread_current()->vm, vme);
+
+  kpage = frame_alloc (PAL_ZERO, vme); //mark
+
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -574,17 +586,6 @@ setup_stack (void **esp)
       else
         frame_free (kpage);
     }
-
-  struct vm_entry *vme = vm_create_vme();
-
-  vme->uaddr = *esp;
-  vme->file = NULL;
-  vme->ofs = 0;
-  vme->read_bytes = 0;     
-  vme->zero_bytes = 0;
-  vme->writable = true;
-
-  vm_insert_vme(&thread_current()->vm, vme);
 
   return success;
 }
@@ -612,29 +613,33 @@ install_page (void *upage, void *kpage, bool writable)
 
 bool handle_mm_fault (struct vm_entry *vme)
 {
-  void *upage = vme->uaddr;
-  uint8_t *kpage;
+  void *uaddr = vme->uaddr;
+  uint8_t *kaddr;
   
-  kpage = frame_alloc(0);
-  if (kpage == NULL)
+  kaddr = frame_alloc(0, vme);//mark
+  if (kaddr == NULL)
     return false;
       
   switch(vme->type){
     case PAGE_BIN:
-      if (!load_file(kpage, vme)) {
-        frame_free(kpage);
-        break;
+      if (!load_file(kaddr, vme)) {
+        frame_free(kaddr);
+        return false;
       }
-
-      if (!install_page (upage, kpage, true)) {
-        frame_free(kpage);
-        break;
-      }
-
-      return true;
-    default: 
       break;
+    case PAGE_SWAP:
+      swap_in(kaddr, vme->swap_idx);
+      break;
+    
+    default: 
+      return false;
+  }
+
+  if (!install_page (uaddr, kaddr, true)) {
+    frame_free(kaddr);
+    return false;
   }
   
-  return false;
+  pagedir_set_accessed(thread_current()->pagedir, uaddr, true);
+  return true;
 }
