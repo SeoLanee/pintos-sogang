@@ -538,13 +538,13 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       struct vm_entry *vme = vm_create_vme();
 
-      vme->vaddr = upage;
+      vme->uaddr = upage;
       vme->file = file;
       vme->ofs = ofs;
       vme->read_bytes = page_read_bytes;
       vme->zero_bytes = zero_bytes;
       vme->writable = writable;
-      vme->type = PAGE_ELF;
+      vme->type = PAGE_BIN;
 
       vm_insert_vme(&thread_current()->vm, vme);
 
@@ -577,7 +577,7 @@ setup_stack (void **esp)
 
   struct vm_entry *vme = vm_create_vme();
 
-  vme->vaddr = *esp;
+  vme->uaddr = *esp;
   vme->file = NULL;
   vme->ofs = 0;
   vme->read_bytes = 0;     
@@ -612,7 +612,7 @@ install_page (void *upage, void *kpage, bool writable)
 
 bool handle_mm_fault (struct vm_entry *vme)
 {
-  void *upage = vme->vaddr;
+  void *upage = vme->uaddr;
   uint8_t *kpage;
   
   kpage = frame_alloc(0);
@@ -620,7 +620,7 @@ bool handle_mm_fault (struct vm_entry *vme)
     return false;
       
   switch(vme->type){
-    case PAGE_ELF:
+    case PAGE_BIN:
       if (!load_file(kpage, vme)) {
         frame_free(kpage);
         break;
