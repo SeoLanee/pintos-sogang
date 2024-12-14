@@ -9,6 +9,9 @@
 #include "userprog/syscall.h"
 #include "userprog/process.h"
 
+#define MAX_STACK_SIZE (8*1024*1024)
+#define STACK_BOUND (PHYS_BASE - MAX_STACK_SIZE)
+
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
@@ -128,7 +131,7 @@ page_fault (struct intr_frame *f)
 {
 //   bool not_present;  /* True: not-present page, false: writing r/o page. */
   bool write;        /* True: access was write, false: access was read. */
-//   bool user;         /* True: access by user, false: access by kernel. */
+  // bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
   
   struct vm_entry *vme;
@@ -151,13 +154,22 @@ page_fault (struct intr_frame *f)
 
   /* Determine cause. */
 //   not_present = (f->error_code & PF_P) == 0;
-//   user = (f->error_code & PF_U) != 0;
+  // user = (f->error_code & PF_U) != 0;
   write = (f->error_code & PF_W) != 0;
 
-  if(is_kernel_vaddr(fault_addr)
-   || (vme = vm_find_vme(fault_addr)) == NULL
-   || (write && !vme->writable)
-   ){
+  if(is_kernel_vaddr(fault_addr))
+    exit(-1);
+
+  if ((vme = vm_find_vme(fault_addr)) == NULL){
+    if(STACK_BOUND <= fault_addr && fault_addr <= PHYS_BASE && f->esp - fault_addr <= 32){
+      process_expand_stack(fault_addr);
+      return;
+    }
+    else exit(-1);
+   
+  }
+
+  if((write && !vme->writable)){
     exit(-1);
   }
 

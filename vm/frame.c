@@ -12,8 +12,8 @@
 static struct list frame_list;
 static struct lock frame_lock;
 
+static void evict_algorithm(void);
 static struct frame *select_to_evict (void);
-static void evict_algorithm();
 
 
 void frame_init(){

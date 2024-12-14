@@ -566,9 +566,8 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
-
   struct vm_entry *vme = vm_create_vme();
-  vme->uaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  vme->uaddr = PHYS_BASE;
   vme->file = NULL;
   vme->ofs = 0;
   vme->read_bytes = 0;     
@@ -606,6 +605,7 @@ install_page (void *upage, void *kpage, bool writable)
 
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
+  
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
@@ -635,11 +635,43 @@ bool handle_mm_fault (struct vm_entry *vme)
       return false;
   }
 
-  if (!install_page (uaddr, kaddr, true)) {
+  if (!install_page (uaddr, kaddr, vme->writable)) {
     frame_free(kaddr);
     return false;
   }
   
   pagedir_set_accessed(thread_current()->pagedir, uaddr, true);
   return true;
+}
+
+
+void process_expand_stack(void *fault_addr)
+{
+  uint8_t *kpage;
+  bool success = false;
+
+  void *upage = pg_round_down(fault_addr);
+
+  struct vm_entry *vme = vm_create_vme();
+  vme->uaddr = upage;
+  vme->file = NULL;
+  vme->ofs = 0;
+  vme->read_bytes = 0;     
+  vme->zero_bytes = 0;
+  vme->writable = true;
+  vm_insert_vme(&thread_current()->vm, vme);
+
+  kpage = frame_alloc (PAL_ZERO, vme); //mark
+
+  if (kpage != NULL) 
+    {
+      success = install_page (upage, kpage, true);
+      if (!success){
+        frame_free (kpage);
+        exit(-1);
+      }
+    }
+  else {
+    exit(-1);
+  }
 }

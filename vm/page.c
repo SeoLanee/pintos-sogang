@@ -38,7 +38,7 @@ struct vm_entry *vm_find_vme(void *uaddr)
 {
     struct hash_elem *e;
     struct vm_entry vme;
-
+    
     vme.uaddr = pg_round_down(uaddr);
 
     e = hash_find(&thread_current()->vm, &vme.hash_elem);
