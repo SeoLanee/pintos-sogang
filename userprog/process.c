@@ -209,13 +209,11 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  lock_acquire(&filesys_lock);
-    for(int i = 0; i < FD_MAX;i++){
+  for(int i = 0; i < FD_MAX;i++){
     file_close(cur->fdt[i]);
   }
   file_close(cur->exec_file);
-  lock_release(&filesys_lock);
-
+  
   vm_destroy(&cur->vm);
 
   /* Destroy the current process's page directory and switch back
@@ -535,7 +533,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
          and zero the final PAGE_ZERO_BYTES bytes. */
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
-      
+       
 
       struct vm_entry *vme = vm_create_vme();
 
