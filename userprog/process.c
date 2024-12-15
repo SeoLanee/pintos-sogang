@@ -541,7 +541,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       vme->file = file;
       vme->ofs = ofs;
       vme->read_bytes = page_read_bytes;
-      vme->zero_bytes = zero_bytes;
+      vme->zero_bytes = page_zero_bytes;
       vme->writable = writable;
       vme->type = PAGE_BIN;
 
