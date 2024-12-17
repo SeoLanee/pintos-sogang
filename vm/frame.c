@@ -31,7 +31,7 @@ void *frame_alloc(enum palloc_flags flags, struct vm_entry *vme){
     }
 
     struct frame *frame = (struct frame *)malloc(sizeof (struct frame));
-    // frame->t = thread_current();
+    frame->t = thread_current();
     frame->vme = vme;
     frame->kaddr = kpage; 
     frame->paddr = (void *)vtop(kpage);
@@ -60,11 +60,11 @@ void frame_free(void *kaddr){
 
 
 static void evict_algorithm(){
-        printf("\n\nout of frames!!\n\n");
         struct frame *evict = select_to_evict();
-        evict->vme->swap_idx = swap_out(evict->kaddr);
         evict->vme->type = PAGE_SWAP;
-        frame_free(evict->kaddr);
+        pagedir_clear_page(evict->t->pagedir, evict->vme->uaddr);
+        evict->vme->swap_idx = swap_out(evict->kaddr);
+        palloc_free_page(evict->kaddr);
 }
 
 struct frame *select_to_evict ()

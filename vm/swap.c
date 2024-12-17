@@ -42,7 +42,7 @@ block_sector_t swap_out(void *page)
     }
 
     for(int i = 0; i < SECTORS_PER_PAGE; i++){
-        block_sector_t sector = swap_idx + SECTORS_PER_PAGE + i;
+        block_sector_t sector = swap_idx * SECTORS_PER_PAGE + i;
         size_t offset = BLOCK_SECTOR_SIZE * i;
         block_write (swap_block, sector, page + offset);
     }
@@ -56,7 +56,7 @@ void swap_in(void *page, block_sector_t swap_idx)
     ASSERT(bitmap_test(swap_pool, swap_idx) == true)
 
     for(int i = 0; i < SECTORS_PER_PAGE; i++){
-        block_sector_t sector = swap_idx + SECTORS_PER_PAGE + i;
+        block_sector_t sector = swap_idx * SECTORS_PER_PAGE + i;
         size_t offset = BLOCK_SECTOR_SIZE * i;
         block_read (swap_block, sector, page + offset);
     }

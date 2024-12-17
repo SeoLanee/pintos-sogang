@@ -565,7 +565,7 @@ setup_stack (void **esp)
   bool success = false;
 
   struct vm_entry *vme = vm_create_vme();
-  vme->uaddr = PHYS_BASE;
+  vme->uaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
   vme->file = NULL;
   vme->ofs = 0;
   vme->read_bytes = 0;     
