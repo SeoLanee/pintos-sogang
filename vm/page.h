@@ -15,6 +15,8 @@ enum page_type
     PAGE_FILE
   };
 
+
+
 struct vm_entry
 {
     struct hash_elem hash_elem;
@@ -39,6 +41,7 @@ void vm_init(struct hash *);
 void vm_destroy(struct hash *);
 
 struct vm_entry *vm_create_vme(void);
+void vm_free_vme(struct vm_entry *);
 
 struct vm_entry *vm_find_vme(void *);
 bool vm_insert_vme(struct hash *, struct vm_entry *);

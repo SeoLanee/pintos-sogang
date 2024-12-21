@@ -33,7 +33,17 @@ void vm_destroy(struct hash *vm)
 struct vm_entry *vm_create_vme()
 {
     struct vm_entry *vme = (struct vm_entry *) malloc(sizeof (struct vm_entry));
+    
+    if(vme == NULL)
+        PANIC("Failed to get vm entry");
+
     return vme;
+}
+
+void vm_free_vme(struct vm_entry *vme)
+{
+    free(vme);
+    return;
 }
 
 struct vm_entry *vm_find_vme(void *uaddr)

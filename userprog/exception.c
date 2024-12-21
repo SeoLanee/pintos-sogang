@@ -11,12 +11,15 @@
 
 #define MAX_STACK_SIZE (8*1024*1024)
 #define STACK_BOUND (PHYS_BASE - MAX_STACK_SIZE)
+#define SIZE_PUSHA 32
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
+
+static inline bool is_growable ();
 
 /* Registers handlers for interrupts that can be caused by user
    programs.
@@ -161,10 +164,7 @@ page_fault (struct intr_frame *f)
     exit(-1);
 
   if ((vme = vm_find_vme(fault_addr)) == NULL){
-    if(STACK_BOUND <= fault_addr && fault_addr <= PHYS_BASE && f->esp - fault_addr <= 32){
-      process_expand_stack(fault_addr);
-      return;
-    }
+    if(is_growable(fault_addr, f->esp) && process_expand_stack(fault_addr)) return;
     else exit(-1);
   }
 
@@ -176,4 +176,10 @@ page_fault (struct intr_frame *f)
     return;
   else
     exit(-1);
+}
+
+static inline bool
+is_growable(void *fault_addr, void *esp)
+{
+  return (STACK_BOUND <= fault_addr) && (fault_addr <= PHYS_BASE) && (esp - fault_addr <= SIZE_PUSHA);
 }
