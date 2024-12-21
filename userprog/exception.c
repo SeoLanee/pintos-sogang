@@ -19,7 +19,7 @@ static long long page_fault_cnt;
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
 
-static inline bool is_growable ();
+static inline bool is_growable(void *, void *);
 
 /* Registers handlers for interrupts that can be caused by user
    programs.
