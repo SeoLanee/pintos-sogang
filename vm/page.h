@@ -3,14 +3,16 @@
 
 #include <hash.h>
 
+#include "vm/frame.h"
 #include "filesys/file.h"
 #include "devices/block.h"
 
 enum page_type
   {
+    PAGE_MEM,
+    PAGE_SWAP,
     PAGE_BIN,
-    PAGE_FILE,
-    PAGE_SWAP
+    PAGE_FILE
   };
 
 struct vm_entry
@@ -19,6 +21,9 @@ struct vm_entry
     enum page_type type;
     void *uaddr;
     bool writable;
+
+    // MEM
+    struct frame *frame;
 
     // BIN
     struct file *file;

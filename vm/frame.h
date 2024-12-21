@@ -17,7 +17,8 @@ struct frame{
 };
 
 void frame_init(void);
-void *frame_alloc(enum palloc_flags, struct vm_entry *);
-void frame_free(void *vaddr);
+struct frame *frame_alloc(enum palloc_flags, struct vm_entry *);
+void frame_free(struct frame *);
+void frame_free_with_page(struct frame *);
 
 #endif

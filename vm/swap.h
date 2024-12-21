@@ -7,6 +7,7 @@
 void swap_init(void);
 block_sector_t swap_out(void *);
 void swap_in(void *, block_sector_t);
+void swap_free(block_sector_t);
 
 struct lock swap_lock;
 

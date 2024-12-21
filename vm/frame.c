@@ -20,7 +20,7 @@ void frame_init(){
     lock_init(&frame_lock);
 }
 
-void *frame_alloc(enum palloc_flags flags, struct vm_entry *vme){
+struct frame *frame_alloc(enum palloc_flags flags, struct vm_entry *vme){
     void *kpage;
     
     kpage = palloc_get_page(PAL_USER | flags);
@@ -38,29 +38,23 @@ void *frame_alloc(enum palloc_flags flags, struct vm_entry *vme){
     lock_acquire(&frame_lock);
     list_push_back(&frame_list, &frame->frame_elem);
     lock_release(&frame_lock);
-    return kpage;
+    
+    return frame;
 }
 
-void frame_free(void *kaddr){
-    struct list_elem *e;
-
+void frame_free(struct frame *frame){
     lock_acquire(&frame_lock);
-    for(e = list_begin(&frame_list); e != list_end(&frame_list); e = list_next(e)){
-        if(list_entry(e, struct frame, frame_elem)->kaddr == kaddr)
-            break;
-    }
+    list_remove(&frame->frame_elem);
     lock_release(&frame_lock);
 
-    if (e != list_end(&frame_list)) {
-        lock_acquire(&frame_lock);
-        list_remove(e);
-        lock_release(&frame_lock);
-        palloc_free_page(kaddr);
-    }
-    
+    free(frame);  
     return;
 }
 
+void frame_free_with_page(struct frame *frame){
+    palloc_free_page(frame->kaddr);
+    frame_free(frame);
+}
 
 static void evict_algorithm(){
         struct frame *evict = select_to_evict();
@@ -71,7 +65,7 @@ static void evict_algorithm(){
         evict->vme->swap_idx = swap_out(evict->kaddr);
         lock_release(&swap_lock);
         
-        palloc_free_page(evict->kaddr);
+        frame_free_with_page(evict);
 }
 
 struct frame *select_to_evict ()

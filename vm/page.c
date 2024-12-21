@@ -1,4 +1,6 @@
-#include "page.h"
+#include "vm/page.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
 #include "threads/thread.h"
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
@@ -89,7 +91,18 @@ static bool vm_less_func(const struct hash_elem *a,
 
 static void vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
 {
-    free(hash_entry(e, struct vm_entry, hash_elem));
+    struct vm_entry *vme = hash_entry(e, struct vm_entry, hash_elem);
+    switch(vme->type){
+        case PAGE_MEM: 
+            frame_free(vme->frame);
+            break;
+        case PAGE_SWAP:
+            swap_free(vme->swap_idx);
+            break;
+        default: break;
+    }
+
+    free(vme);
     return;
 }
 

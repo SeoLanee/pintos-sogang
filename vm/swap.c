@@ -64,3 +64,11 @@ void swap_in(void *page, block_sector_t swap_idx)
     bitmap_set(swap_pool, swap_idx, false);
     return;
 }
+
+void swap_free(block_sector_t swap_idx)
+{
+    ASSERT(bitmap_test(swap_pool, swap_idx) == true)
+
+    bitmap_set(swap_pool, swap_idx, false);
+    return;
+}

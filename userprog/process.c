@@ -209,9 +209,8 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  for(int i = 0; i < FD_MAX;i++){
+  for(int i = 0; i < FD_MAX;i++)
     file_close(cur->fdt[i]);
-  }
   file_close(cur->exec_file);
   
   vm_destroy(&cur->vm);
@@ -537,13 +536,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       struct vm_entry *vme = vm_create_vme();
 
+      vme->type = PAGE_BIN;
       vme->uaddr = upage;
+      vme->writable = writable;
+
       vme->file = file;
       vme->ofs = ofs;
       vme->read_bytes = page_read_bytes;
       vme->zero_bytes = page_zero_bytes;
-      vme->writable = writable;
-      vme->type = PAGE_BIN;
 
       vm_insert_vme(&thread_current()->vm, vme);
 
@@ -561,27 +561,28 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint8_t *kpage;
+  struct frame *frame;
   bool success = false;
 
   struct vm_entry *vme = vm_create_vme();
   vme->uaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
-  vme->file = NULL;
-  vme->ofs = 0;
-  vme->read_bytes = 0;     
-  vme->zero_bytes = 0;
+  vme->type = PAGE_MEM;
   vme->writable = true;
+
   vm_insert_vme(&thread_current()->vm, vme);
 
-  kpage = frame_alloc (PAL_ZERO, vme); //mark
-
-  if (kpage != NULL) 
+  frame = frame_alloc (PAL_ZERO, vme); //mark
+  
+  if (frame != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
+      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, frame->kaddr, true);
+      if (success){
         *esp = PHYS_BASE;
-      else
-        frame_free (kpage);
+        vme->frame = frame;
+      }
+      else{
+        frame_free_with_page(frame);
+      }
     }
 
   return success;
@@ -612,22 +613,22 @@ install_page (void *upage, void *kpage, bool writable)
 bool handle_mm_fault (struct vm_entry *vme)
 {
   void *uaddr = vme->uaddr;
-  uint8_t *kaddr;
+  struct frame *frame;
   
-  kaddr = frame_alloc(0, vme);//mark
-  if (kaddr == NULL)
+  frame = frame_alloc(0, vme);//mark
+  if (frame == NULL)
     return false;
       
   switch(vme->type){
     case PAGE_BIN:
-      if (!load_file(kaddr, vme)) {
-        frame_free(kaddr);
+      if (!load_file(frame->kaddr, vme)) {
+        frame_free_with_page(frame);
         return false;
       }
       break;
     case PAGE_SWAP:
       lock_acquire(&swap_lock);
-      swap_in(kaddr, vme->swap_idx);
+      swap_in(frame->kaddr, vme->swap_idx);
       lock_release(&swap_lock);
       break;
     
@@ -635,10 +636,13 @@ bool handle_mm_fault (struct vm_entry *vme)
       return false;
   }
 
-  if (!install_page (uaddr, kaddr, vme->writable)) {
-    frame_free(kaddr);
+  if (!install_page (uaddr, frame->kaddr, vme->writable)) {
+    frame_free_with_page(frame);
     return false;
   }
+
+  vme->type = PAGE_MEM;
+  vme->frame = frame;
   
   pagedir_set_accessed(thread_current()->pagedir, uaddr, true);
   return true;
@@ -647,27 +651,26 @@ bool handle_mm_fault (struct vm_entry *vme)
 
 void process_expand_stack(void *fault_addr)
 {
-  uint8_t *kpage;
+  struct frame *frame;
   bool success = false;
 
   void *upage = pg_round_down(fault_addr);
 
   struct vm_entry *vme = vm_create_vme();
   vme->uaddr = upage;
-  vme->file = NULL;
-  vme->ofs = 0;
-  vme->read_bytes = 0;     
-  vme->zero_bytes = 0;
+  vme->type = PAGE_MEM;
   vme->writable = true;
   vm_insert_vme(&thread_current()->vm, vme);
 
-  kpage = frame_alloc (PAL_ZERO, vme); //mark
-
-  if (kpage != NULL) 
+  frame = frame_alloc (PAL_ZERO, vme); //mark
+  if (frame != NULL) 
     {
-      success = install_page (upage, kpage, true);
-      if (!success){
-        frame_free (kpage);
+      success = install_page (upage, frame->kaddr, true);
+      if (success){
+        vme->frame = frame;
+      }
+      else{
+        frame_free_with_page (frame);
         exit(-1);
       }
     }
