@@ -132,9 +132,7 @@ kill (struct intr_frame *f)
 static void
 page_fault (struct intr_frame *f) 
 {
-//   bool not_present;  /* True: not-present page, false: writing r/o page. */
   bool write;        /* True: access was write, false: access was read. */
-  // bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
   
   struct vm_entry *vme;
@@ -156,8 +154,6 @@ page_fault (struct intr_frame *f)
   page_fault_cnt++;
 
   /* Determine cause. */
-//   not_present = (f->error_code & PF_P) == 0;
-  // user = (f->error_code & PF_U) != 0;
   write = (f->error_code & PF_W) != 0;
 
   if(is_kernel_vaddr(fault_addr))

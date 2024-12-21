@@ -9,9 +9,9 @@
 
 enum page_type
   {
+    PAGE_BIN,
     PAGE_MEM,
     PAGE_SWAP,
-    PAGE_BIN,
     PAGE_FILE
   };
 

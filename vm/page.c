@@ -42,6 +42,15 @@ struct vm_entry *vm_create_vme()
 
 void vm_free_vme(struct vm_entry *vme)
 {
+    switch(vme->type){
+        case PAGE_MEM: 
+            frame_free(vme->frame);
+            break;
+        case PAGE_SWAP:
+            swap_free(vme->swap_idx);
+            break;
+        default: break;
+    }
     free(vme);
     return;
 }

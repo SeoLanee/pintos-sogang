@@ -231,6 +231,10 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+  sema_up(&cur->wait_sema);
+  if(cur->parent)
+    sema_down(&cur->exit_sema);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -578,6 +582,8 @@ setup_stack (void **esp)
 
         vme->frame = frame;  
         vm_insert_vme(&thread_current()->vm, vme);
+        
+        pagedir_set_accessed(thread_current()->pagedir, vme->uaddr, true);
       }
       else{
         vm_free_vme(vme);
@@ -609,6 +615,8 @@ bool process_expand_stack(void *fault_addr)
         
         vme->frame = frame;
         vm_insert_vme(&thread_current()->vm, vme);
+        
+        pagedir_set_accessed(thread_current()->pagedir, vme->uaddr, true);
       }
       else{
         vm_free_vme(vme);
