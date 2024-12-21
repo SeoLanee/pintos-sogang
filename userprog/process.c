@@ -626,7 +626,9 @@ bool handle_mm_fault (struct vm_entry *vme)
       }
       break;
     case PAGE_SWAP:
+      lock_acquire(&swap_lock);
       swap_in(kaddr, vme->swap_idx);
+      lock_release(&swap_lock);
       break;
     
     default: 

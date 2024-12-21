@@ -1,6 +1,5 @@
 #include "swap.h"
 
-#include "threads/synch.h"
 #include "threads/vaddr.h"
 #include <bitmap.h>
 
@@ -8,7 +7,7 @@
 
 static struct block *swap_block;
 static struct bitmap *swap_pool;
-static struct lock swap_lock;
+static struct lock bitmap_lock;
 
 static size_t swap_available;
 
@@ -23,6 +22,7 @@ void swap_init(void)
     swap_pool = bitmap_create(swap_available);
     bitmap_set_all(swap_pool, false);
     
+    lock_init(&bitmap_lock);
     lock_init(&swap_lock);
 
     return;
@@ -33,9 +33,9 @@ block_sector_t swap_out(void *page)
 {
     ASSERT (page != NULL)
 
-    lock_acquire(&swap_lock);
+    lock_acquire(&bitmap_lock);
     size_t swap_idx = bitmap_scan_and_flip(swap_pool, 0, 1, false);
-    lock_release(&swap_lock);
+    lock_release(&bitmap_lock);
 
     if(swap_idx == BITMAP_ERROR){
         PANIC ("failed to get free slot");

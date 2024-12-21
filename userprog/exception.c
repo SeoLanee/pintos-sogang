@@ -166,7 +166,6 @@ page_fault (struct intr_frame *f)
       return;
     }
     else exit(-1);
-   
   }
 
   if((write && !vme->writable)){
