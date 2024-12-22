@@ -58,30 +58,34 @@ void frame_free_with_page(struct frame *frame){
 
 static void evict_algorithm(){
         struct frame *evict = select_to_evict();
-        evict->vme->type = PAGE_SWAP;
-        pagedir_clear_page(evict->t->pagedir, evict->vme->uaddr);
-        
+        struct thread *t = evict->t;
+        struct vm_entry *vme = evict->vme;
+
         lock_acquire(&swap_lock);
-        evict->vme->swap_idx = swap_out(evict->kaddr);
+        vme->swap_idx = swap_out(evict->kaddr);
         lock_release(&swap_lock);
         
         frame_free_with_page(evict);
+        
+        vme->type = PAGE_SWAP;
+        vme->frame = NULL;
+        pagedir_clear_page(t->pagedir, vme->uaddr);
 }
 
 struct frame *select_to_evict ()
 {
     while(true){
         lock_acquire(&frame_lock);
-        struct frame *victim = list_entry(list_pop_front(&frame_list), struct frame, frame_elem);
+        struct frame *victim = list_entry(list_front(&frame_list), struct frame, frame_elem);
         lock_release(&frame_lock);
 
         struct thread *t = victim->t;
         struct vm_entry *vme = victim->vme;
         if(pagedir_is_accessed(t->pagedir, vme->uaddr)){
             pagedir_set_accessed(t->pagedir, vme->uaddr, false);
-            
+
             lock_acquire(&frame_lock);
-            list_push_back(&frame_list, &victim->frame_elem);
+            list_push_back(&frame_list, list_pop_front(&frame_list));
             lock_release(&frame_lock);
         }
         else return victim;
